@@ -3,7 +3,7 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import BinaryIO, Callable, Union
+from typing import BinaryIO, Callable, Tuple, Union
 
 import pytest
 
@@ -395,12 +395,14 @@ def test_upload_package_version_wrong_filename(
     assert not os.path.exists(package_dir)
 
 
-def sha256(path: Union[Path, str]) -> str:
+def hashes(path: Union[Path, str]) -> Tuple[str, str]:
     sha = hashlib.sha256()
+    md5 = hashlib.md5()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(2**16), b""):
             sha.update(chunk)
-    return sha.hexdigest()
+            md5.update(chunk)
+    return sha.hexdigest(), md5.hexdigest()
 
 
 @pytest.mark.parametrize("upload_function", [_upload_file_1, _upload_file_2])
@@ -420,8 +422,9 @@ def test_upload_duplicate_package_version(
     package_filename = "test-package-0.1-0.tar.bz2"
     package_filename_copy = "test-package-0.1-0_copy.tar.bz2"
 
-    file_sha = sha256(package_filename)
-    file_copy_sha = sha256(package_filename_copy)
+    file_sha, file_md5 = hashes(package_filename)
+    file_copy_sha, file_copy_md5 = hashes(package_filename_copy)
+
     assert (
         file_sha != file_copy_sha
     ), "Sanity check: Test files must have different hashes for this test."
@@ -478,6 +481,9 @@ def test_upload_duplicate_package_version(
     # Hashes should match pre-upload expectation
     assert repodata_init_pkg["sha256"] == file_sha
     assert repodata_pkg["sha256"] == file_copy_sha
+
+    assert repodata_init_pkg["md5"] == file_md5
+    assert repodata_pkg["md5"] == file_copy_md5
 
     # Sizes should match pre-upload expectation
     assert repodata_init_pkg["size"] == file_size
