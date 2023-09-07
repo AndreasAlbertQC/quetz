@@ -446,8 +446,10 @@ def test_upload_duplicate_package_version(
 
     # Try submitting the same package without 'force' flag
     response = upload_function(
-        auth_client, public_channel, public_package, package_filename
+        auth_client, public_channel, public_package, package_filename_copy
     )
+    # Nothing should have changed
+    assert repodata_init == get_repodata()
 
     # Expect 409 here
     assert response.status_code == 409
